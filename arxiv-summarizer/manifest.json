@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "ArXiv Summarizer",
+  "version": "1.0.0",
+  "description": "Summarize arXiv papers into concise paragraphs with key insights and methods.",
+  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
+  "host_permissions": [
+    "https://arxiv.org/*",
+    "https://*.arxiv.org/*",
+    "https://ar5iv.org/*",
+    "https://api.openai.com/*",
+    "https://api.perplexity.ai/*"
+  ],
+  "action": {
+    "default_title": "Summarize this arXiv paper",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "128": "icon128.png"
+  }
+}
+

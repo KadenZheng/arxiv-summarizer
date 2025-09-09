@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>ArXiv Summarizer – Options</title>
+  <link rel="stylesheet" href="styles.css" />
+  </head>
+<body class="options">
+  <h1>ArXiv Summarizer – Options</h1>
+  <form id="form">
+    <label>
+      OpenAI API Key
+      <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" />
+    </label>
+    <label>
+      Model (e.g., gpt-5-mini-2025-08-07)
+      <input id="model" type="text" value="gpt-5-mini-2025-08-07" />
+    </label>
+    <button type="submit">Save</button>
+    <span id="saved"></span>
+  </form>
+  <p class="hint">
+    Your key is stored in Chrome sync storage. Usage is billed by OpenAI.
+  </p>
+  <script src="options.js"></script>
+  </body>
+  </html>
+
+
