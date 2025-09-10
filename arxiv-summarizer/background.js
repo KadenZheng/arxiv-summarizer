@@ -1,8 +1,9 @@
 // background.js (MV3 service worker; ES module)
-import { summarizeFromArxivUrl, answerFollowupFromArxivUrl } from "./summarizer.js";
+import { startSummaryConversation, continueConversation } from "./summarizer.js";
 
 let lastSummary = null;
 let lastSourceUrl = null;
+let conversationMessages = null; // Array of {role, content}
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
@@ -38,18 +39,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message?.type === "ASK_FOLLOWUP") {
+  if (message?.type === "GET_CHAT") {
+    sendResponse({ ok: true, messages: conversationMessages || [], sourceUrl: lastSourceUrl });
+    return true;
+  }
+
+  if (message?.type === "FOLLOW_UP" && typeof message.content === "string") {
     (async () => {
-      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!activeTab?.id || !activeTab?.url) {
-        sendResponse({ ok: false, error: "No active tab or URL." });
-        return;
-      }
       try {
-        const answer = await answerFollowupFromArxivUrl(activeTab.url, message.question || "");
-        sendResponse({ ok: true, answer });
+        if (!conversationMessages || conversationMessages.length === 0) {
+          const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (!activeTab?.url) {
+            sendResponse({ ok: false, error: "No active tab URL." });
+            return;
+          }
+          // Initialize if needed
+          const { messages, reply } = await startSummaryConversation(activeTab.url);
+          conversationMessages = messages;
+          lastSummary = reply;
+          lastSourceUrl = activeTab.url;
+          chrome.runtime.sendMessage({ type: "CHAT_UPDATED", messages: conversationMessages, sourceUrl: lastSourceUrl });
+        }
+
+        conversationMessages.push({ role: "user", content: message.content });
+        const reply = await continueConversation(conversationMessages);
+        conversationMessages.push({ role: "assistant", content: reply });
+        lastSummary = reply;
+        chrome.runtime.sendMessage({ type: "CHAT_UPDATED", messages: conversationMessages, sourceUrl: lastSourceUrl });
+        sendResponse({ ok: true });
       } catch (e) {
-        sendResponse({ ok: false, error: e?.message || String(e) });
+        const err = e?.message || String(e);
+        sendResponse({ ok: false, error: err });
       }
     })();
     return true;
@@ -72,18 +92,20 @@ async function startSummarizationForTab(tabId, knownUrl) {
       return;
     }
 
-    // Emit a "working" update (optional)
-    chrome.runtime.sendMessage({ type: "SUMMARY_READY", summary: "Working… fetching paper text and summarizing.", sourceUrl: url });
+    // Emit a "working" update
+    chrome.runtime.sendMessage({ type: "SUMMARY_READY", summary: "Working… summarizing via Perplexity.", sourceUrl: url });
 
-    const summary = await summarizeFromArxivUrl(url);
-    lastSummary = summary;
+    const { messages, reply } = await startSummaryConversation(url);
+    conversationMessages = messages;
+    lastSummary = reply;
     lastSourceUrl = url;
 
-    chrome.runtime.sendMessage({ type: "SUMMARY_READY", summary, sourceUrl: url });
+    chrome.runtime.sendMessage({ type: "CHAT_UPDATED", messages, sourceUrl: url });
   } catch (e) {
     const err = e?.message || String(e);
     lastSummary = `Error: ${err}`;
     chrome.runtime.sendMessage({ type: "SUMMARY_READY", summary: lastSummary, sourceUrl: knownUrl || null });
   }
 }
+
 

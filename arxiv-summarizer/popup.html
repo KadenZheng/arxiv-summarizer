@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <title>ArXiv Summarizer</title>
   <link rel="stylesheet" href="styles.css" />
-  </head>
+</head>
 <body class="popup">
   <header>
     <h1>ArXiv Summarizer</h1>
@@ -16,14 +16,17 @@
     <button id="summarizeBtn" type="button">Summarize current paper</button>
     <div id="status"></div>
     <article id="summary"></article>
-    <div id="qa">
-      <input id="followupInput" type="text" placeholder="Ask a follow-up question…" />
-      <button id="askBtn" type="button">Ask</button>
-      <article id="answer"></article>
-    </div>
+    <section id="chat">
+      <h2 style="font-size: 13px; margin: 8px 0 4px;">Follow-up</h2>
+      <div id="chatMessages" style="max-height: 240px; overflow:auto; border:1px solid #e5e7eb; border-radius:8px; padding:8px;"></div>
+      <form id="chatForm" style="display:flex; gap:6px; margin-top:6px;">
+        <input id="chatInput" type="text" placeholder="Ask a follow-up…" style="flex:1;" />
+        <button id="chatSend" type="submit">Send</button>
+      </form>
+    </section>
   </main>
   <script type="module" src="popup.js"></script>
-  </body>
-  </html>
+</body>
+</html>
 
 

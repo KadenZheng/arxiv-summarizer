@@ -9,17 +9,17 @@ function flashSaved(msg) {
   setTimeout(() => (saved.textContent = ""), 2000);
 }
 
-chrome.storage.sync.get(["OPENAI_API_KEY", "OPENAI_MODEL"], (cfg) => {
-  if (cfg.OPENAI_API_KEY) apiKey.value = cfg.OPENAI_API_KEY;
-  if (cfg.OPENAI_MODEL) model.value = cfg.OPENAI_MODEL;
+chrome.storage.sync.get(["PERPLEXITY_API_KEY", "PERPLEXITY_MODEL"], (cfg) => {
+  if (cfg.PERPLEXITY_API_KEY) apiKey.value = cfg.PERPLEXITY_API_KEY;
+  if (cfg.PERPLEXITY_MODEL) model.value = cfg.PERPLEXITY_MODEL;
 });
 
 form.addEventListener("submit", (e) => {
   e.preventDefault();
   chrome.storage.sync.set(
     {
-      OPENAI_API_KEY: apiKey.value.trim(),
-      OPENAI_MODEL: (model.value || "gpt-5-mini-2025-08-07").trim()
+      PERPLEXITY_API_KEY: apiKey.value.trim(),
+      PERPLEXITY_MODEL: (model.value || "sonar").trim()
     },
     () => flashSaved("Saved!")
   );

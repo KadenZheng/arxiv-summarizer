@@ -8,7 +8,6 @@
     "https://arxiv.org/*",
     "https://*.arxiv.org/*",
     "https://ar5iv.org/*",
-    "https://api.openai.com/*",
     "https://api.perplexity.ai/*"
   ],
   "action": {
