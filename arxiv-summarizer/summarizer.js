@@ -1,14 +1,50 @@
 // summarizer.js
 // Utilities to extract arXiv ID, fetch ar5iv HTML -> text, build prompt, and call OpenAI.
 
-// Optional: Hardcode your OpenAI API key/model here to bypass the Options page.
-// Leave the key empty to use the Options-saved values instead.
-const HARDCODED_OPENAI_API_KEY = "REDACTED"; // Paste your key here, e.g., "sk-..."
-const HARDCODED_OPENAI_MODEL = "gpt-5-mini-2025-08-07"; // Optional override when hardcoding
-// Optional: Perplexity API support (https://api.perplexity.ai/chat/completions)
-// If set, the extension will prefer Perplexity; leave empty to use OpenAI instead.
-const HARDCODED_PERPLEXITY_API_KEY = "REDACTED"; // e.g., "pplx-..."
-const HARDCODED_PERPLEXITY_MODEL = "sonar-pro"; // e.g., sonar-pro, sonar-small-chat
+// Secrets/config loading: prefer .env in the extension folder, then env.json, then Options
+// .env format example:
+// OPENAI_API_KEY=sk-...
+// OPENAI_MODEL=gpt-5-mini-2025-08-07
+// PERPLEXITY_API_KEY=pplx-...
+// PERPLEXITY_MODEL=sonar-pro
+let __envCache = null;
+async function getLocalEnv() {
+  if (__envCache !== null) return __envCache;
+  // Try .env (key=value pairs)
+  try {
+    const envUrl = chrome.runtime.getURL(".env");
+    const res = await fetch(envUrl, { credentials: "omit" });
+    if (res.ok) {
+      const text = await res.text();
+      const env = {};
+      text.split(/\r?\n/).forEach(line => {
+        const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+        if (!m) return;
+        const key = m[1];
+        let val = m[2];
+        // Remove surrounding quotes if any
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        env[key] = val;
+      });
+      __envCache = env;
+      return __envCache;
+    }
+  } catch (_) {}
+  // Fallback: env.json (JSON object)
+  try {
+    const jsonUrl = chrome.runtime.getURL("env.json");
+    const res = await fetch(jsonUrl, { credentials: "omit" });
+    if (res.ok) {
+      const env = await res.json();
+      __envCache = env || {};
+      return __envCache;
+    }
+  } catch (_) {}
+  __envCache = {};
+  return __envCache;
+}
 
 function getArxivIdFromUrl(url) {
   try {
@@ -106,16 +142,16 @@ ${pageText}
 }
 
 async function getApiConfig() {
-  if ((HARDCODED_OPENAI_API_KEY || "").trim()) {
-    return {
-      apiKey: HARDCODED_OPENAI_API_KEY.trim(),
-      model: (HARDCODED_OPENAI_MODEL || "gpt-5-mini-2025-08-07").trim()
-    };
+  const env = await getLocalEnv();
+  const envKey = (env.OPENAI_API_KEY || "").trim();
+  const envModel = (env.OPENAI_MODEL || "").trim();
+  if (envKey) {
+    return { apiKey: envKey, model: (envModel || "gpt-5-mini-2025-08-07").trim() };
   }
   return new Promise(resolve => {
     chrome.storage.sync.get(["OPENAI_API_KEY", "OPENAI_MODEL"], (cfg) => {
       resolve({
-        apiKey: cfg.OPENAI_API_KEY || "",
+        apiKey: (cfg.OPENAI_API_KEY || "").trim(),
         model: (cfg.OPENAI_MODEL || "gpt-5-mini-2025-08-07").trim()
       });
     });
@@ -225,10 +261,13 @@ export async function summarizeFromArxivUrl(currentUrl) {
   ]);
 
   const prompt = buildPrompt(paperText, `https://arxiv.org/abs/${arxivId}`);
-  if ((HARDCODED_PERPLEXITY_API_KEY || "").trim()) {
+  const env = await getLocalEnv();
+  const pplxKey = (env.PERPLEXITY_API_KEY || "").trim();
+  const pplxModel = (env.PERPLEXITY_MODEL || "sonar-pro").trim();
+  if (pplxKey) {
     return await summarizeWithChunking(prompt, (p) => callPerplexity(p, {
-      apiKey: HARDCODED_PERPLEXITY_API_KEY.trim(),
-      model: (HARDCODED_PERPLEXITY_MODEL || "sonar-pro").trim()
+      apiKey: pplxKey,
+      model: pplxModel
     }));
   }
   return await summarizeWithChunking(prompt, (p) => callOpenAI(p, apiCfg));
@@ -241,10 +280,13 @@ export async function answerFollowupFromArxivUrl(currentUrl, question) {
   const paperText = await fetchAr5ivPlainText(arxivId);
   const prompt = buildFollowupPrompt(paperText, `https://arxiv.org/abs/${arxivId}`, question);
 
-  if ((HARDCODED_PERPLEXITY_API_KEY || "").trim()) {
+  const env = await getLocalEnv();
+  const pplxKey = (env.PERPLEXITY_API_KEY || "").trim();
+  const pplxModel = (env.PERPLEXITY_MODEL || "sonar-pro").trim();
+  if (pplxKey) {
     return await summarizeWithChunking(prompt, (p) => callPerplexity(p, {
-      apiKey: HARDCODED_PERPLEXITY_API_KEY.trim(),
-      model: (HARDCODED_PERPLEXITY_MODEL || "sonar-pro").trim()
+      apiKey: pplxKey,
+      model: pplxModel
     }));
   }
   const apiCfg = await getApiConfig();
